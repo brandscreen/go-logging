@@ -103,7 +103,7 @@ func FileLogger(name string, level Level, format string, timeFormat string, file
 	if err == nil {
 		logger.path = file
 		if err = logger.OpenLogFile(); err != nil {
-			return nil, nil
+			return nil, err
 		}
 		return logger, nil
 	} else {
