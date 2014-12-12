@@ -76,7 +76,9 @@ type Logger struct {
 	request chan request // queue used in non-runtime logging
 	flush   chan bool    // flush signal for the watcher to write
 	quit    chan bool    // quit signal for the watcher to quit
+	reopen  chan bool    // reopen signal
 	fd      *os.File     // file handler, used to close the file on destroy
+	path    string       // path of log file, for reopening
 	runtime bool         // with runtime operation or not
 }
 
@@ -97,13 +99,12 @@ func RichLogger(name string) (*Logger, error) {
 
 // FileLogger creates a new logger with file output.
 func FileLogger(name string, level Level, format string, timeFormat string, file string, sync bool) (*Logger, error) {
-	out, err := os.OpenFile(file, os.O_WRONLY|os.O_APPEND|os.O_CREATE, os.ModeAppend|0666)
-	if err != nil {
-		return nil, err
-	}
-	logger, err := createLogger(name, level, format, timeFormat, out, sync)
+	logger, err := createLogger(name, level, format, timeFormat, nil, sync)
 	if err == nil {
-		logger.fd = out
+		logger.path = file
+		if err = logger.OpenLogFile(); err != nil {
+			return nil, nil
+		}
 		return logger, nil
 	} else {
 		return nil, err
@@ -178,8 +179,10 @@ func createLogger(name string, level Level, format string, timeFormat string, ou
 	logger.request = make(chan request, reqSize)
 	logger.flush = make(chan bool)
 	logger.quit = make(chan bool)
+	logger.reopen = make(chan bool)
 	logger.startTime = time.Now()
 	logger.fd = nil
+	logger.path = ""
 	logger.timeFormat = timeFormat
 
 	// start watcher to write logs if it is async or no runtime field
@@ -212,6 +215,39 @@ func (logger *Logger) Flush() {
 		// wait for flush finish
 		<-logger.flush
 	}
+}
+
+// Reopen the log file
+func (logger *Logger) Reopen() error {
+	if !logger.sync {
+		// send reopen signal; the watcher will reopen the file for us
+		logger.reopen <- true
+		// wait for reopen
+		<-logger.reopen
+	} else if logger.fd != nil {
+		// reopen the file ourselves
+		return logger.OpenLogFile()
+	}
+	return nil
+}
+
+// Open the log file configured for this logger
+// If there is no file specified, do nothing
+// Close the file if it is already open
+func (logger *Logger) OpenLogFile() error {
+	if logger.fd != nil {
+		logger.fd.Close()
+	}
+	if logger.path != "" {
+		flags := os.O_WRONLY | os.O_APPEND | os.O_CREATE
+		mode := os.ModeAppend | 0666
+		var err error
+		if logger.fd, err = os.OpenFile(logger.path, flags, mode); err != nil {
+			return err
+		}
+		logger.out = logger.fd
+	}
+	return nil
 }
 
 // Getter functions

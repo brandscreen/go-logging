@@ -58,6 +58,13 @@ func (logger *Logger) watcher() {
 						return
 					}
 				}
+			case <-logger.reopen:
+				logger.flushBuf(&buf)
+				if err := logger.OpenLogFile(); err != nil {
+					panic(err)
+				}
+				logger.reopen <- true
+				i = bufSize
 			}
 		}
 		logger.flushBuf(&buf)
