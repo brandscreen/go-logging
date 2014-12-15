@@ -60,7 +60,7 @@ func (logger *Logger) watcher() {
 				}
 			case <-logger.reopen:
 				logger.flushBuf(&buf)
-				if err := logger.OpenLogFile(); err != nil {
+				if err := logger.openLogFile(); err != nil {
 					panic(err)
 				}
 				logger.reopen <- true

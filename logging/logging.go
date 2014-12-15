@@ -101,7 +101,7 @@ func FileLogger(name string, level Level, format string, timeFormat string, file
 	logger, err := createLogger(name, level, format, timeFormat, nil, sync)
 	if err == nil {
 		logger.path = file
-		if err = logger.OpenLogFile(); err != nil {
+		if err = logger.openLogFile(); err != nil {
 			return nil, err
 		}
 		return logger, nil
@@ -225,7 +225,7 @@ func (logger *Logger) Reopen() error {
 		<-logger.reopen
 	} else if logger.fd != nil {
 		// reopen the file ourselves
-		return logger.OpenLogFile()
+		return logger.openLogFile()
 	}
 	return nil
 }
@@ -233,7 +233,7 @@ func (logger *Logger) Reopen() error {
 // Open the log file configured for this logger
 // If there is no file specified, do nothing
 // Close the file if it is already open
-func (logger *Logger) OpenLogFile() error {
+func (logger *Logger) openLogFile() error {
 	if logger.fd != nil {
 		logger.fd.Close()
 	}
