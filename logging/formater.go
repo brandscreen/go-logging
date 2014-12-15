@@ -29,11 +29,9 @@ const (
 )
 
 // genLog generates log string from the format setting.
-func (logger *Logger) genLog(level Level, message string) string {
+func (logger *Logger) genLog(req *request, message string) string {
 	fs := make([]interface{}, len(logger.recordArgs))
-	r := new(record)
-	r.message = message
-	r.level = level
+	r := NewRecord(req, message)
 	for k, v := range logger.recordArgs {
 		fs[k] = fields[v](logger, r)
 	}
@@ -42,7 +40,6 @@ func (logger *Logger) genLog(level Level, message string) string {
 
 // parseFormat checks the legality of format and parses it to recordFormat and recordArgs
 func (logger *Logger) parseFormat(format string) error {
-	logger.runtime = false
 	fts := strings.Split(format, "\n")
 	if len(fts) != 2 {
 		return errors.New("logging format error")
@@ -56,7 +53,6 @@ func (logger *Logger) parseFormat(format string) error {
 			return errors.New("logging format error")
 		}
 		logger.recordArgs[k] = tv
-		logger.runtime = logger.runtime || runtimeFields[tv]
 	}
 	return nil
 }

@@ -20,7 +20,6 @@ import (
 	"bitbucket.org/kardianos/osext"
 	"os"
 	"path"
-	"runtime"
 	"sync/atomic"
 	"time"
 )
@@ -40,7 +39,19 @@ type record struct {
 	time     time.Time
 }
 
-// This variable maps fields in recordArgs to relavent function signatures
+func NewRecord(req *request, message string) *record {
+	r := new(record)
+	r.message = message
+	r.level = req.level
+	r.pathname = req.pathname
+	r.filename = req.filename
+	r.lineno = req.lineno
+	r.funcname = req.funcname
+	r.thread = req.thread
+	return r
+}
+
+// This variable maps fields in recordArgs to relevent function signatures
 var fields = map[string]func(*Logger, *record) interface{}{
 	"name":      (*Logger).lname,     // name of the logger
 	"seqid":     (*Logger).nextSeqid, // sequence number
@@ -59,64 +70,6 @@ var fields = map[string]func(*Logger, *record) interface{}{
 	"thread":    (*Logger).thread,    // thread id
 	"process":   (*Logger).process,   // process id
 	"message":   (*Logger).message,   // logger message
-}
-
-var runtimeFields = map[string]bool{
-	"name":      false,
-	"seqid":     false,
-	"levelno":   false,
-	"levelname": false,
-	"created":   false,
-	"nsecs":     false,
-	"time":      false,
-	"timestamp": false,
-	"rtime":     false,
-	"filename":  true,
-	"pathname":  true,
-	"module":    false,
-	"lineno":    true,
-	"funcname":  true,
-	"thread":    true,
-	"process":   false,
-	"message":   false,
-}
-
-// If it fails to get some fields with string type, these fields are set to
-// errString value.
-const errString = "???"
-
-// GetGoID returns the id of goroutine, which is defined in ./get_go_id.c
-func GetGoID() int32
-
-// genRuntime generates the runtime information, including pathname, function
-// name, filename, line number.
-func genRuntime(r *record) {
-	calldepth := 5
-	pc, file, line, ok := runtime.Caller(calldepth)
-	if ok {
-		// Generate short function name
-		fname := runtime.FuncForPC(pc).Name()
-		fshort := fname
-		for i := len(fname) - 1; i > 0; i-- {
-			if fname[i] == '.' {
-				fshort = fname[i+1:]
-				break
-			}
-		}
-
-		r.pathname = file
-		r.funcname = fshort
-		r.filename = path.Base(file)
-		r.lineno = line
-	} else {
-		r.pathname = errString
-		r.funcname = errString
-		r.filename = errString
-		// Here we uses -1 rather than 0, because the default value in
-		// golang is 0 and we should know the value is uninitialized
-		// or failed to get
-		r.lineno = -1
-	}
 }
 
 // Logger name
@@ -144,17 +97,11 @@ func (logger *Logger) levelname(r *record) interface{} {
 
 // File name of calling logger, with whole path
 func (logger *Logger) pathname(r *record) interface{} {
-	if r.pathname == "" {
-		genRuntime(r)
-	}
 	return r.pathname
 }
 
 // File name of calling logger
 func (logger *Logger) filename(r *record) interface{} {
-	if r.filename == "" {
-		genRuntime(r)
-	}
 	return r.filename
 }
 
@@ -166,17 +113,11 @@ func (logger *Logger) module(r *record) interface{} {
 
 // Line number
 func (logger *Logger) lineno(r *record) interface{} {
-	if r.lineno == 0 {
-		genRuntime(r)
-	}
 	return r.lineno
 }
 
 // Function name
 func (logger *Logger) funcname(r *record) interface{} {
-	if r.funcname == "" {
-		genRuntime(r)
-	}
 	return r.funcname
 }
 
@@ -216,9 +157,6 @@ func (logger *Logger) rtime(r *record) interface{} {
 
 // Thread ID
 func (logger *Logger) thread(r *record) interface{} {
-	if r.thread == 0 {
-		r.thread = int(GetGoID())
-	}
 	return r.thread
 }
 

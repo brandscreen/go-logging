@@ -79,7 +79,6 @@ type Logger struct {
 	reopen  chan bool    // reopen signal
 	fd      *os.File     // file handler, used to close the file on destroy
 	path    string       // path of log file, for reopening
-	runtime bool         // with runtime operation or not
 }
 
 // SimpleLogger creates a new logger with simple configuration.
