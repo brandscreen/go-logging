@@ -58,6 +58,13 @@ func (logger *Logger) watcher() {
 						return
 					}
 				}
+			case <-logger.reopen:
+				logger.flushBuf(&buf)
+				if err := logger.OpenLogFile(); err != nil {
+					panic(err)
+				}
+				logger.reopen <- true
+				i = bufSize
 			}
 		}
 		logger.flushBuf(&buf)
@@ -76,11 +83,11 @@ func (logger *Logger) flushBuf(b *bytes.Buffer) {
 func (logger *Logger) flushReq(b *bytes.Buffer, req *request) {
 	if req.format == "" {
 		msg := fmt.Sprint(req.v...)
-		msg = logger.genLog(req.level, msg)
+		msg = logger.genLog(req, msg)
 		fmt.Fprintln(b, msg)
 	} else {
 		msg := fmt.Sprintf(req.format, req.v...)
-		msg = logger.genLog(req.level, msg)
+		msg = logger.genLog(req, msg)
 		fmt.Fprintln(b, msg)
 	}
 }
@@ -99,15 +106,13 @@ func (logger *Logger) flushMsg(message string) {
 // log records log v... with level `level'.
 func (logger *Logger) log(level Level, v ...interface{}) {
 	if int32(level) >= atomic.LoadInt32((*int32)(&logger.level)) {
-		if logger.runtime || logger.sync {
-			message := fmt.Sprint(v...)
-			message = logger.genLog(level, message)
-			logger.flushMsg(message)
+		req := NewRequest(logger, level, "", v)
+		if logger.sync {
+			msg := fmt.Sprint(req.v...)
+			msg = logger.genLog(req, msg)
+			logger.flushMsg(msg)
 		} else {
-			r := new(request)
-			r.level = level
-			r.v = v
-			logger.request <- *r
+			logger.request <- *req
 		}
 	}
 }
@@ -115,16 +120,13 @@ func (logger *Logger) log(level Level, v ...interface{}) {
 // logf records log v... with level `level'.
 func (logger *Logger) logf(level Level, format string, v ...interface{}) {
 	if int32(level) >= atomic.LoadInt32((*int32)(&logger.level)) {
-		if logger.runtime || logger.sync {
-			message := fmt.Sprintf(format, v...)
-			message = logger.genLog(level, message)
-			logger.flushMsg(message)
+		req := NewRequest(logger, level, format, v)
+		if logger.sync {
+			msg := fmt.Sprintf(format, v...)
+			msg = logger.genLog(req, msg)
+			logger.flushMsg(msg)
 		} else {
-			r := new(request)
-			r.level = level
-			r.format = format
-			r.v = v
-			logger.request <- *r
+			logger.request <- *req
 		}
 	}
 }

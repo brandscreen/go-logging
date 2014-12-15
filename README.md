@@ -174,8 +174,9 @@ It supports the following fields for the second part of the format.
 "process"       int        %d      // process id
 "message"       string     %s      // logger message
 ```
-The following runtime-related fields is extremely expensive and slow, please
-be careful when using them.
+The following runtime-related fields are extremely expensive and slow; please
+be careful when using them, as they will be evaluated in the calling context,
+even in asynchronous mode.
 ```go
 "filename"      string     %s      // source filename of the caller
 "pathname"      string     %s      // filename with path
