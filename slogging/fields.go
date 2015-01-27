@@ -34,7 +34,6 @@ type record struct {
 	module   string
 	lineno   int
 	funcname string
-	thread   int
 	process  int
 	message  string
 	time     time.Time
@@ -75,7 +74,6 @@ var runtimeFields = map[string]bool{
 	"module":    false,
 	"lineno":    true,
 	"funcname":  true,
-	"thread":    true,
 	"process":   false,
 	"message":   false,
 }
