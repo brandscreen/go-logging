@@ -17,7 +17,7 @@
 package slogging
 
 import (
-	"bitbucket.org/kardianos/osext"
+	"github.com/kardianos/osext"
 	"os"
 	"path"
 	"runtime"
